@@ -1,6 +1,8 @@
 import numpy as np
-import theano
-import theano.tensor as T
+#import theano
+#import theano.tensor as T
+import tensorflow as tf
+import collections
 
 from scipy.misc import logsumexp
 
@@ -243,6 +245,73 @@ class RNN():
         _p_y = T.nnet.softmax(T.dot(_z2, _W_y.T))
 
         return _p_y
+
+
+class TfRNN(RNN):
+    """
+    RNN implementation in Tensorflow.
+    """
+    def __init__(self, n_words, n_emb, n_hidd, n_tags, seed=None):
+        """
+        n_words int         Size of the vocabulary
+        n_emb   int         Size of the embeddings
+        n_hidd  int         Size of the recurrent layer
+        n_tags  int         Total number of tags
+        seed    int         Seed to random initialization of parameters (default=None)
+        """
+
+        # MODEL PARAMETERS
+        if not seed:
+            np.random.seed(0)
+        else:
+            np.random.seed(seed)
+
+        W_e = tf.Variable(0.01 * tf.random_uniform((n_emb, n_words)), name='W_e')  # Embedding layer
+        W_x = tf.Variable(tf.random_uniform((n_hidd, n_emb)), name='W_x')  # Input layer
+        W_h = tf.Variable(tf.random_uniform((n_hidd, n_hidd)), name='W_h')  # Recurrent layer
+        W_y = tf.Variable(tf.random_uniform((n_tags, n_hidd)), name='W_y')  # Output layer
+
+        # Class variables
+        self.n_hidd = n_hidd
+        self.param = [W_e, W_x, W_h, W_y]
+
+    def _forward(self, _x, h0=None):
+        # Default initial hidden is allways set to zero
+        if h0 is None:
+            h0 = tf.zeros((1, self.n_hidd), name='h0')
+
+        # COMPUTATION GRAPH
+
+        # Get parameters in nice form
+        W_e, W_x, W_h, W_y = self.param
+
+        # NOTE: Since _x contains the indices rather than full one-hot vectors,
+        # use _W_e[:, _x].T instead of T.dot(_x, _W_e.T)
+
+        ###########################
+        # Solution to Exercise 6.3
+
+        # Embedding layer
+        _z1 = tf.gather(tf.transpose(W_e), _x)  # same as _z1 = W_e[:, _x].T
+
+        params = collections.namedtuple('params', 'W_x, W_h, W_y, z, h')
+        _, h = tf.while_loop(
+            lambda i, p: i < _z1.shape[0],
+            lambda i, p: (i + 1,
+                          params(p.W_x,
+                                 p.W_h,
+                                 p.W_y,
+                                 p.z,
+                                 tf.sigmoid(
+                                     tf.matmul(p.z, tf.transpose(p.W_x)) +
+                                     tf.matmul(p.h, tf.transpose(p.W_h)))[-1:])),
+            (tf.constant(0), params(W_x, W_h, W_y, _z1, h0))
+        )
+        z2 = h.h
+
+        p_y = tf.nn.softmax(tf.matmul(z2, tf.transpose(W_y)))
+
+        return p_y
 
 
 class LSTM():
