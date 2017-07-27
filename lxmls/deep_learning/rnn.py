@@ -266,14 +266,20 @@ class TfRNN(RNN):
         else:
             np.random.seed(seed)
 
-        W_e = tf.Variable(0.01 * tf.random_uniform((n_emb, n_words)), name='W_e')  # Embedding layer
-        W_x = tf.Variable(tf.random_uniform((n_hidd, n_emb)), name='W_x')  # Input layer
-        W_h = tf.Variable(tf.random_uniform((n_hidd, n_hidd)), name='W_h')  # Recurrent layer
-        W_y = tf.Variable(tf.random_uniform((n_tags, n_hidd)), name='W_y')  # Output layer
+        W_e = 0.01 * np.random.uniform(size=(n_emb, n_words)).astype(np.float32)  # Embedding layer
+        W_x = np.random.uniform(size=(n_hidd, n_emb)).astype(np.float32)  # Input layer
+        W_h = np.random.uniform(size=(n_hidd, n_hidd)).astype(np.float32)  # Recurrent layer
+        W_y = np.random.uniform(size=(n_tags, n_hidd)).astype(np.float32)  # Output layer
+
+        with tf.variable_scope('weights'):
+            _W_e = tf.get_variable('W_e', initializer=W_e, dtype=tf.float32)  # Embedding layer
+            _W_x = tf.get_variable('W_x', initializer=W_x, dtype=tf.float32)  # Input layer
+            _W_h = tf.get_variable('W_h', initializer=W_h, dtype=tf.float32)  # Recurrent layer
+            _W_y = tf.get_variable('W_y', initializer=W_y, dtype=tf.float32)  # Output layer
 
         # Class variables
         self.n_hidd = n_hidd
-        self.param = [W_e, W_x, W_h, W_y]
+        self.param = [_W_e, _W_x, _W_h, _W_y]
 
     def _forward(self, _x, h0=None):
         # Default initial hidden is allways set to zero
